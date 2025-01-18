@@ -1,13 +1,18 @@
+/*这段代码定义了一个静态常量数组 image_ITKLogo，用于存储一个名为 ITKLogo.png 的图像文件的压缩和编码数据。*/
+
 /*
  * Resource generated for file:
  *    ITKLogo.png (zlib, base64) (image file)
  */
-static const unsigned int  image_ITKLogo_width          = 63;
-static const unsigned int  image_ITKLogo_height         = 40;
-static const unsigned int  image_ITKLogo_pixel_size     = 4;
-static const unsigned long image_ITKLogo_length         = 4988;
-static const unsigned long image_ITKLogo_decoded_length = 10080;
+static const unsigned int  image_ITKLogo_width          = 63;//image_ITKLogo_width：图像的宽度（63 像素）。
+static const unsigned int  image_ITKLogo_height         = 40;//image_ITKLogo_height：图像的高度（40 像素）。
+static const unsigned int  image_ITKLogo_pixel_size     = 4;//image_ITKLogo_pixel_size：每个像素的字节数（4 字节，可能表示 RGBA 格式）。
+static const unsigned long image_ITKLogo_length         = 4988;//image_ITKLogo_length：压缩后的图像数据长度（4988 字节）。
+static const unsigned long image_ITKLogo_decoded_length = 10080;//image_ITKLogo_length：压缩后的图像数据长度（4988 字节）。
 
+//mage_ITKLogo[]：数组名称，存储图像文件的压缩和编码数据。
+//数组内容：使用 base64 编码的字符串，表示 ITKLogo.png 图像文件的压缩数据。
+//这个数组可以在程序中用于解码和显示图像。
 static const unsigned char image_ITKLogo[] =
   "eNrNWnlU1NcV/rXJ6enpH0nbc9omOU2b1iWNSZMaEzWapE2axdrGJafuacSkMQKyKmoERQ"
   "QRUBYXCIKAikQWZUdQBGFYVDYRZFUWEWZYBhxmGLZh+Hrvg0EwAook6TvnHua3v+/de7+7"

@@ -1,13 +1,26 @@
+/*这段代码定义了一个静态常量数组 image_BillsLogo，它包含了一个名为 BillsLogo.png 的图片文件的压缩和编码数据。
+具体来说：
+文件头部注释说明了资源是从 BillsLogo.png 文件生成的，并且使用了 zlib 压缩和 base64 编码。
+定义了一些与图片相关的常量：
+image_BillsLogo_width：图片的宽度（40像素）。
+image_BillsLogo_height：图片的高度（40像素）。
+image_BillsLogo_pixel_size：每个像素的大小（3字节，表示 RGB）。
+image_BillsLogo_length：压缩后的图片数据长度（3080字节）。
+image_BillsLogo_decoded_length：解码后的图片数据长度（4800字节）。
+定义了一个静态常量字符数组 image_BillsLogo，其中包含了图片的 base64 编码数据。
+这些数据可以在程序中用于解码和显示图片。*/
+
 /*
  * Resource generated for file:
  *    BillsLogo.png (zlib, base64) (image file)
  */
-static const unsigned int  image_BillsLogo_width          = 40;
-static const unsigned int  image_BillsLogo_height         = 40;
-static const unsigned int  image_BillsLogo_pixel_size     = 3;
-static const unsigned long image_BillsLogo_length         = 3080;
-static const unsigned long image_BillsLogo_decoded_length = 4800;
+static const unsigned int  image_BillsLogo_width          = 40;//image_BillsLogo_width：图片的宽度（40像素）。
+static const unsigned int  image_BillsLogo_height         = 40;//image_BillsLogo_height：图片的高度（40像素）。
+static const unsigned int  image_BillsLogo_pixel_size     = 3;//image_BillsLogo_pixel_size：每个像素的大小（3字节，表示 RGB）。
+static const unsigned long image_BillsLogo_length         = 3080;//image_BillsLogo_length：压缩后的图片数据长度（3080字节）。
+static const unsigned long image_BillsLogo_decoded_length = 4800;//image_BillsLogo_decoded_length：解码后的图片数据长度（4800字节）。
 
+//定义了一个静态常量字符数组 image_BillsLogo，其中包含了图片的 base64 编码数据。
 static const unsigned char image_BillsLogo[] =
   "eNrtmPlv2+YZx/+RYSgwYMC6Nk2XOE58KbZly5dsS9Zh3RIpUbxJ8RBFkRQP3dZt67Blx3"
   "KaOIfj1E6adl2bblj3j40Z9kuBrVDaoj8VeEBABKnP+zzv+zzf5yHFF6lf3Ui+QP3G/Y8x"
