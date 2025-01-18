@@ -1,13 +1,16 @@
+/*该资源文件是由 NAMICLogo.png 图像文件生成的，使用了 zlib 压缩和 base64 编码。*/
+
 /*
  * Resource generated for file:
  *    NAMICLogo.png (zlib, base64) (image file)
  */
-static const unsigned int  image_NAMICLogo_width          = 33;
-static const unsigned int  image_NAMICLogo_height         = 40;
-static const unsigned int  image_NAMICLogo_pixel_size     = 3;
-static const unsigned long image_NAMICLogo_length         = 2196;
-static const unsigned long image_NAMICLogo_decoded_length = 3960;
+static const unsigned int  image_NAMICLogo_width          = 33; // 图像宽度
+static const unsigned int  image_NAMICLogo_height         = 40; // 图像高度
+static const unsigned int  image_NAMICLogo_pixel_size     = 3;  // 每个像素的字节数
+static const unsigned long image_NAMICLogo_length         = 2196; // 压缩后的图像数据长度
+static const unsigned long image_NAMICLogo_decoded_length = 3960; // 解码后的图像数据长度
 
+//mage_NAMICLogo 数组：使用 base64 编码的字符串，表示 NAMICLogo.png 图像文件的压缩数据。
 static const unsigned char image_NAMICLogo[] =
   "eNqtV3lMk2cY/1DEsXnNuJnp4jBZNo1Ztj9cjG5ZZjLNFuPckSBt6S2KRFQE50QdbooRvM"
   "ArIkY8xiab0H5HTyhyCAWkHIIUWs6CchQKK/fV7nlbxB5fEY83bwj5+n7P73mf5/f8nuez"
