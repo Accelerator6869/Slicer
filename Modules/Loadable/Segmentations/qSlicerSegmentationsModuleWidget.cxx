@@ -185,7 +185,17 @@ void qSlicerSegmentationsModuleWidget::onEnter()
   this->qvtkConnect(this->mrmlScene(), vtkMRMLScene::EndRestoreEvent,
                     this, SLOT(onMRMLSceneEndRestoreEvent()));
 
-  this->onSegmentationNodeChanged( d->MRMLNodeComboBox_Segmentation->currentNode() );
+  // If no node is selected then select the first displayed node to save the user a click
+  if (!d->MRMLNodeSelector_Segmentation->currentNode())
+  {
+    vtkMRMLNode* node = d->MRMLNodeSelector_Segmentation->findFirstNodeByClass("vtkMRMLSegmentationNode");
+    if (node)
+    {
+      d->MRMLNodeSelector_Segmentation->setCurrentNode(node);
+    }
+  }
+
+  this->onSegmentationNodeChanged(d->MRMLNodeSelector_Segmentation->currentNode());
 
   d->populateTerminologyContextComboBox();
 }
@@ -202,7 +212,7 @@ vtkMRMLSegmentationDisplayNode* qSlicerSegmentationsModuleWidget::segmentationDi
   Q_D(qSlicerSegmentationsModuleWidget);
 
   vtkMRMLSegmentationNode* segmentationNode =  vtkMRMLSegmentationNode::SafeDownCast(
-    d->MRMLNodeComboBox_Segmentation->currentNode() );
+    d->MRMLNodeSelector_Segmentation->currentNode() );
   if (!segmentationNode)
   {
     return nullptr;
@@ -284,7 +294,7 @@ void qSlicerSegmentationsModuleWidget::updateCopyMoveButtonStates()
 
   // Set button states that copy/move from current segmentation
   vtkMRMLSegmentationNode* currentSegmentationNode =  vtkMRMLSegmentationNode::SafeDownCast(
-    d->MRMLNodeComboBox_Segmentation->currentNode() );
+    d->MRMLNodeSelector_Segmentation->currentNode() );
   if (currentSegmentationNode && currentSegmentationNode->GetSegmentation()->GetNumberOfSegments() > 0)
   {
     d->toolButton_MoveFromCurrentSegmentation->setEnabled(true);
@@ -311,13 +321,13 @@ void qSlicerSegmentationsModuleWidget::init()
   d->ImportExportTypeButtonGroup->addButton(d->radioButton_Model);
 
   // Make connections
-  connect(d->MRMLNodeComboBox_Segmentation, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
+  connect(d->MRMLNodeSelector_Segmentation, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
     this, SLOT(onSegmentationNodeChanged(vtkMRMLNode*)) );
-  connect(d->MRMLNodeComboBox_Segmentation, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
+  connect(d->MRMLNodeSelector_Segmentation, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
     d->SegmentsTableView, SLOT(setSegmentationNode(vtkMRMLNode*)) );
-  connect(d->MRMLNodeComboBox_Segmentation, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
+  connect(d->MRMLNodeSelector_Segmentation, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
     d->SegmentsTableView_Current, SLOT(setSegmentationNode(vtkMRMLNode*)) );
-  connect(d->MRMLNodeComboBox_Segmentation, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
+  connect(d->MRMLNodeSelector_Segmentation, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
     d->RepresentationsListView, SLOT(setSegmentationNode(vtkMRMLNode*)) );
 
   connect(d->SegmentsTableView, SIGNAL(selectionChanged(QItemSelection,QItemSelection)),
@@ -349,7 +359,7 @@ void qSlicerSegmentationsModuleWidget::init()
     this, SLOT(onExportColorTableChanged()));
 
   d->ExportToFilesWidget->setSettingsKey("ExportSegmentsToFiles");
-  connect(d->MRMLNodeComboBox_Segmentation, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
+  connect(d->MRMLNodeSelector_Segmentation, SIGNAL(currentNodeChanged(vtkMRMLNode*)),
     d->ExportToFilesWidget, SLOT(setSegmentationNode(vtkMRMLNode*)));
 
   connect(d->toolButton_MoveFromCurrentSegmentation, SIGNAL(clicked()),
@@ -423,7 +433,7 @@ void qSlicerSegmentationsModuleWidget::selectSegmentationNode(vtkMRMLSegmentatio
 {
   Q_D(qSlicerSegmentationsModuleWidget);
 
-  d->MRMLNodeComboBox_Segmentation->setCurrentNode(segmentationNode);
+  d->MRMLNodeSelector_Segmentation->setCurrentNode(segmentationNode);
 }
 
 //-----------------------------------------------------------------------------
@@ -446,7 +456,7 @@ void qSlicerSegmentationsModuleWidget::onAddSegment()
   Q_D(qSlicerSegmentationsModuleWidget);
 
   vtkMRMLSegmentationNode* currentSegmentationNode =  vtkMRMLSegmentationNode::SafeDownCast(
-    d->MRMLNodeComboBox_Segmentation->currentNode() );
+    d->MRMLNodeSelector_Segmentation->currentNode() );
   if (!currentSegmentationNode)
   {
     qWarning() << Q_FUNC_INFO << ": No segmentation selected";
@@ -479,10 +489,8 @@ void qSlicerSegmentationsModuleWidget::onAddSegment()
   {
     vtkSegment* secondLastSegment = currentSegmentationNode->GetSegmentation()->GetNthSegment(
       currentSegmentationNode->GetSegmentation()->GetNumberOfSegments() - 2 );
-    std::string repeatedTerminologyEntry("");
-    secondLastSegment->GetTag(secondLastSegment->GetTerminologyEntryTagName(), repeatedTerminologyEntry);
-    currentSegmentationNode->GetSegmentation()->GetSegment(addedSegmentID)->SetTag(
-      secondLastSegment->GetTerminologyEntryTagName(), repeatedTerminologyEntry );
+    std::string repeatedTerminologyEntry = secondLastSegment->GetTerminology();
+    currentSegmentationNode->GetSegmentation()->GetSegment(addedSegmentID)->SetTerminology(repeatedTerminologyEntry);
   }
 }
 
@@ -491,7 +499,7 @@ void qSlicerSegmentationsModuleWidget::onEditSegmentation()
 {
   Q_D(qSlicerSegmentationsModuleWidget);
 
-  if (!d->MRMLNodeComboBox_Segmentation->currentNode())
+  if (!d->MRMLNodeSelector_Segmentation->currentNode())
   {
     qCritical() << Q_FUNC_INFO << ": Invalid segmentation";
     return;
@@ -520,7 +528,7 @@ void qSlicerSegmentationsModuleWidget::onEditSegmentation()
       qCritical() << Q_FUNC_INFO << ": MRMLNodeComboBox_Segmentation is not found in Segment Editor module";
       return;
     }
-    nodeSelector->setCurrentNode(d->MRMLNodeComboBox_Segmentation->currentNode());
+    nodeSelector->setCurrentNode(d->MRMLNodeSelector_Segmentation->currentNode());
 
     // Get segments table and select segment
     qMRMLSegmentsTableView* segmentsTable = moduleWidget->findChild<qMRMLSegmentsTableView*>("SegmentsTableView");
@@ -539,7 +547,7 @@ void qSlicerSegmentationsModuleWidget::onRemoveSelectedSegments()
   Q_D(qSlicerSegmentationsModuleWidget);
 
   vtkMRMLSegmentationNode* currentSegmentationNode =  vtkMRMLSegmentationNode::SafeDownCast(
-    d->MRMLNodeComboBox_Segmentation->currentNode() );
+    d->MRMLNodeSelector_Segmentation->currentNode() );
   if (!currentSegmentationNode)
   {
     qCritical() << Q_FUNC_INFO << ": No segmentation selected";
@@ -815,7 +823,7 @@ bool qSlicerSegmentationsModuleWidget::copySegmentsBetweenSegmentations(bool cop
   Q_D(qSlicerSegmentationsModuleWidget);
 
   vtkMRMLSegmentationNode* currentSegmentationNode =  vtkMRMLSegmentationNode::SafeDownCast(
-    d->MRMLNodeComboBox_Segmentation->currentNode() );
+    d->MRMLNodeSelector_Segmentation->currentNode() );
   if (!currentSegmentationNode)
   {
     qWarning() << Q_FUNC_INFO << ": No current segmentation is selected";
@@ -879,7 +887,7 @@ bool qSlicerSegmentationsModuleWidget::exportFromCurrentSegmentation()
   }
 
   vtkMRMLSegmentationNode* currentSegmentationNode =  vtkMRMLSegmentationNode::SafeDownCast(
-    d->MRMLNodeComboBox_Segmentation->currentNode() );
+    d->MRMLNodeSelector_Segmentation->currentNode() );
   if (!currentSegmentationNode || !currentSegmentationNode->GetSegmentation())
   {
     qWarning() << Q_FUNC_INFO << ": No segmentation selected";
@@ -1031,7 +1039,7 @@ bool qSlicerSegmentationsModuleWidget::importToCurrentSegmentation()
   Q_D(qSlicerSegmentationsModuleWidget);
 
   vtkMRMLSegmentationNode* currentSegmentationNode = vtkMRMLSegmentationNode::SafeDownCast(
-    d->MRMLNodeComboBox_Segmentation->currentNode());
+    d->MRMLNodeSelector_Segmentation->currentNode());
   if (!currentSegmentationNode)
   {
     qWarning() << Q_FUNC_INFO << ": No segmentation selected";
@@ -1175,7 +1183,7 @@ bool qSlicerSegmentationsModuleWidget::setEditedNode(
   Q_UNUSED(context);
   if (vtkMRMLSegmentationNode::SafeDownCast(node))
   {
-    d->MRMLNodeComboBox_Segmentation->setCurrentNode(node);
+    d->MRMLNodeSelector_Segmentation->setCurrentNode(node);
     return true;
   }
   return false;

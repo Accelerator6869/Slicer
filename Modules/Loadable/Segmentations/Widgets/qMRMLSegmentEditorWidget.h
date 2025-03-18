@@ -52,7 +52,7 @@ class qSlicerAbstractModuleWidget;
 
 /// \brief Qt widget for editing a segment from a segmentation using Editor effects.
 ///
-/// Widget for editing segmentations that can be re-used in any module.
+/// Widget for editing segmentations that can be reused in any module.
 ///
 /// IMPORTANT: The embedding module is responsible for setting the MRML scene and the
 ///   management of the \sa vtkMRMLSegmentEditorNode parameter set node.
@@ -268,6 +268,8 @@ public:
   /// If settings key is changed then the current default terminology entry is not written
   /// into application settings (as it would overwrite its current value in the settings,
   /// which is usually not the expected behavior).
+  /// This default can be overridden by default terminology entry specified for the
+  /// segmentation node using vtkSlicerTerminologiesModuleLogic::SetDefaultTerminologyEntry()
   void setDefaultTerminologyEntrySettingsKey(const QString& terminologyEntrySettingsKey);
   /// Get settings key that stores defaultTerminologyEntry.
   /// \sa setDefaultTerminologyEntrySettingsKey
@@ -537,6 +539,8 @@ protected slots:
   void onImportExportActionClicked();
   /// Open Export to files dialog
   void onExportToFilesActionClicked();
+  /// Export segment color and terminology information to a new color table
+  void onExportToColorTableActionClicked();
 
   /// Update masking section on the UI
   void updateMaskingSection();

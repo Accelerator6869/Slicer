@@ -35,6 +35,10 @@
 #include <QStandardPaths>
 #include <QTemporaryFile>
 
+#ifdef Q_OS_WIN32
+#include <Windows.h> // For ExitProcess
+#endif
+
 // For:
 //  - Slicer_BIN_DIR
 //  - Slicer_BUILD_APPLICATIONUPDATE_SUPPORT
@@ -652,6 +656,20 @@ void qSlicerCoreApplicationPrivate::initDataIO()
   this->DataIOManagerLogic->SetMRMLApplicationLogic(this->AppLogic);
   this->DataIOManagerLogic->SetAndObserveDataIOManager(
     this->MRMLRemoteIOLogic->GetDataIOManager());
+
+  if (!this->CoreIOManager.isNull())
+  {
+    QSettings* userSettings = q->userSettings();
+    if (userSettings)
+    {
+      int maximumFileNameLength = userSettings->value("ioManager/MaximumFileNameLength", this->CoreIOManager->defaultMaximumFileNameLength()).toInt();
+      this->CoreIOManager->setDefaultMaximumFileNameLength(maximumFileNameLength);
+    }
+    else
+    {
+      qWarning() << Q_FUNC_INFO << ": failed to access application settings, using default defaultMaximumFileNameLength value";
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------

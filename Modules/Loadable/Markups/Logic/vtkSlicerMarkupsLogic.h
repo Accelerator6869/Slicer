@@ -27,32 +27,34 @@
 // Slicer includes
 #include "vtkSlicerModuleLogic.h"
 
+// Markups module includes
+class vtkSlicerMarkupsInteractionWidget;
+class vtkSlicerMarkupsWidget;
+
 // MRML includes
 #include "vtkMRMLStorageNode.h"
-
-// VTK includes
-#include "vtkVector.h"
-
-// STD includes
-#include <cstdlib>
-#include <string>
-
-#include "vtkSlicerMarkupsModuleLogicExport.h"
-
-class vtkIdList;
-class vtkMatrix4x4;
-class vtkMRMLMarkupsNode;
 class vtkMRMLMarkupsClosedCurveNode;
 class vtkMRMLMarkupsDisplayNode;
 class vtkMRMLMarkupsJsonStorageNode;
+class vtkMRMLMarkupsNode;
 class vtkMRMLMessageCollection;
 class vtkMRMLSelectionNode;
 class vtkMRMLTableNode;
+
+// VTK includes
+#include <vtkVector.h>
+class vtkIdList;
+class vtkMatrix4x4;
 class vtkPlane;
 class vtkPoints;
 class vtkPolyData;
-class vtkSlicerMarkupsInteractionWidget;
-class vtkSlicerMarkupsWidget;
+
+// STD includes
+#include <cstdlib>
+#include <list>
+#include <string>
+
+#include "vtkSlicerMarkupsModuleLogicExport.h"
 
 class VTK_SLICER_MARKUPS_MODULE_LOGIC_EXPORT vtkSlicerMarkupsLogic :
   public vtkSlicerModuleLogic

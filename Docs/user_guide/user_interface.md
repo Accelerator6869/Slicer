@@ -41,6 +41,7 @@ The Layout Toolbar provides a drop-down menu of layouts useful for many types of
 - **File**: Functions for loading a previously saved scene or individual datasets of various types, and for downloading sample datasets from the internet. An option for saving scenes and data is also provided here. **Add Data** allows loading data from files. **DICOM** module is recommended to import data from DICOM files and loading of imported DICOM data. **Save** opens the "Save Data" window, which offers a variety of options for saving all data or selected datasets.
 - **Edit**: Contains an option for showing Application Settings, which allows users to customize appearance and behavior of Slicer, such as modules displayed in the toolbar, application font size, temporary directory location, location of additional Slicer modules to include.
 - **View**: Functions for showing/hiding additional windows and widgets, such as **Extensions Manager** for installing extensions from Slicer app store, **Error Log** for checking if the application encountered any potential errors, **Python Console** for getting a Python console to interact with the loaded data or modules, **show/hide toolbars**, or **switch view layout**.
+- **Help**: Contains links to documentation, guides, and community sites. **Report a Bug** provides instructions for bug reporting and and convenient access to log messages. There are also links to search for **Slicer Publications** and learn **How to Cite** Slicer.
 
 ### Toolbar
 
@@ -109,7 +110,11 @@ Slicer has multiple mouse modes: **Transform** (which allows interactive rotate,
 
 The toolbar icons that switch between these mouse modes are shown from left to right above, respectively. Place Point List is the default place option as shown above; options to place other nodes such as Ruler and Region of Interest Widgets are also available from the drop-down Place Mode menu.
 
-> **Note:** Transform mode is the default interaction mode. By default, Place mode persists for one "place" operation after the Place Mode icon is selected, and then the mode switches back to Transform. Place mode can be made persistent (useful for placing multiple control points) by checking the Persistent checkbox shown rightmost in the Mouse Mode Toolbar.
+:::{note}
+
+Transform mode is the default interaction mode. By default, Place mode persists for one "place" operation after the Place Mode icon is selected, and then the mode switches back to Transform. Place mode can be made persistent (useful for placing multiple control points) by checking the Persistent checkbox shown rightmost in the Mouse Mode Toolbar.
+
+:::
 
 #### Adjusting image window/level
 
@@ -130,7 +135,7 @@ Displays a rendered 3D view of the scene along with visual references to specify
 
 Default orientation axes: A = anterior, P = posterior, R = right, L = left, S = superior and I = inferior.
 
-![](https://github.com/Slicer/Slicer/releases/download/docs-resources/user_interface_3d_view_controls.png)
+![](https://github.com/Slicer/Slicer/releases/download/docs-resources/user_interface_3d_view_controls_2025_03_09.png)
 
 3D View Controls: The blue bar across any 3D View shows a pushpin icon on its left. When the mouse rolls over this icon, a panel for configuring the 3D View is displayed. The panel is hidden when the mouse moves away. For persistent display of this panel, just click the pushpin icon.
 
@@ -150,6 +155,23 @@ Default orientation axes: A = anterior, P = posterior, R = right, L = left, S = 
 - **Rock** continuously rocks the view left-to-right.
 - **Zoom in/out** slightly zooms in/out the view. Convenient buttons for touchscreens.
 - **Tilt Lock** can be toggled using `Ctrl` + `b` keyboard shortcut. In tilt lock mode 3D view rotation is restricted to the azimuth axis (left-right direction) by disabling rotation around elevation axis (up-down direction).
+
+#### Ambient shadows
+
+- Shadows visibility: if enabled then ambient shadows are displayed to improve depth perception
+  - Size scale (default: 0): Size of features to be emphasized by shadows. Lower values emphasize surface unevenness (bumps and depressions). Higher size scale makes larger regions that are much farther much darker. The optimal value can be determined by adjusting the value starting from the highest value gradually until regions that are behind objects appear darker. Very high values (1.5 to 3.0) may make the entire image appear darker, therefore it is important to go below this range, typically down to about 0.5 to 1.5.
+  - Intensity scale: (default: 1): Intensity of darkening by shadows. Increase the value to make shadows darker.
+  - Intensity shift: (default: 0): Minimum amount of occlusion required for visible darkening by shadows. It is usually only necessary to increase this value if the intensity scale is increased, which makes the entire image somewhat darker. In this case, increasing the intensity shift can compensate the overall darkening.
+  - Volume opacity threshold (0% to 100%; default: 25%): This value only affects volume rendering. Voxels that have opacity above this value will cast shadows. Choosing too low value results in dark artifacts in regions that have very low opacity. Choosing too high value results artifacts near opaque regions that have somewhat lower opacity value.
+
+Examples:
+![](https://github.com/Slicer/Slicer/releases/download/docs-resources/user_interface_ambient_shadows.png)
+
+:::{note}
+
+Default ambient shadows settings can be chosen in the application menu (Edit / Application Settings / Views / 3D viewer defaults).
+
+:::
 
 ### Slice View
 
@@ -268,9 +290,13 @@ view will not activate the view.
 | `Keypad 0` or `Insert` | reset zoom and pan, rotate to nearest standard view |
 | `left-double-click` | maximize view/restore view layout |
 
-> **Note:** Simulation if shortcuts not available on your device:
-> - One-button mouse: instead of `right-click` do `Ctrl` + `click`
-> - Trackpad: instead of `right-click` do `two-finger click`
+:::{note}
+
+Simulation if shortcuts not available on your device:
+- One-button mouse: instead of `right-click` do `Ctrl` + `click`
+- Trackpad: instead of `right-click` do `two-finger click`
+
+:::
 
 ### Python console
 

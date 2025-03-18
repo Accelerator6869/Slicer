@@ -33,29 +33,20 @@ vtkStandardNewMacro(vtkSlicerTerminologyEntry);
 //----------------------------------------------------------------------------
 vtkSlicerTerminologyEntry::vtkSlicerTerminologyEntry()
 {
-  this->TerminologyContextName = nullptr;
-
-  this->CategoryObject = nullptr;
-  vtkSmartPointer<vtkSlicerTerminologyCategory> category = vtkSmartPointer<vtkSlicerTerminologyCategory>::New();
+  vtkNew<vtkSlicerTerminologyCategory> category;
   this->SetCategoryObject(category);
 
-  this->TypeObject = nullptr;
-  vtkSmartPointer<vtkSlicerTerminologyType> type = vtkSmartPointer<vtkSlicerTerminologyType>::New();
+  vtkNew<vtkSlicerTerminologyType> type;
   this->SetTypeObject(type);
 
-  this->TypeModifierObject = nullptr;
-  vtkSmartPointer<vtkSlicerTerminologyType> typeModifier = vtkSmartPointer<vtkSlicerTerminologyType>::New();
+  vtkNew<vtkSlicerTerminologyType> typeModifier;
   this->SetTypeModifierObject(typeModifier);
 
-  this->AnatomicContextName = nullptr;
+  vtkNew<vtkSlicerTerminologyType> region;
+  this->SetRegionObject(region);
 
-  this->AnatomicRegionObject = nullptr;
-  vtkSmartPointer<vtkSlicerTerminologyType> anatomicRegion = vtkSmartPointer<vtkSlicerTerminologyType>::New();
-  this->SetAnatomicRegionObject(anatomicRegion);
-
-  this->AnatomicRegionModifierObject = nullptr;
-  vtkSmartPointer<vtkSlicerTerminologyType> anatomicRegionModifier = vtkSmartPointer<vtkSlicerTerminologyType>::New();
-  this->SetAnatomicRegionModifierObject(anatomicRegionModifier);
+  vtkNew<vtkSlicerTerminologyType> regionModifier;
+  this->SetRegionModifierObject(regionModifier);
 }
 
 //----------------------------------------------------------------------------
@@ -67,10 +58,75 @@ vtkSlicerTerminologyEntry::~vtkSlicerTerminologyEntry()
   this->SetTypeObject(nullptr);
   this->SetTypeModifierObject(nullptr);
 
-  this->SetAnatomicContextName(nullptr);
+  this->SetRegionContextName(nullptr);
 
-  this->SetAnatomicRegionObject(nullptr);
-  this->SetAnatomicRegionModifierObject(nullptr);
+  this->SetRegionObject(nullptr);
+  this->SetRegionModifierObject(nullptr);
+}
+
+//----------------------------------------------------------------------------
+void vtkSlicerTerminologyEntry::Initialize()
+{
+  this->SetTerminologyContextName(nullptr);
+
+  this->CategoryObject->Initialize();
+  this->TypeObject->Initialize();
+  this->TypeModifierObject->Initialize();
+
+  this->SetRegionContextName(nullptr);
+
+  this->RegionObject->Initialize();
+  this->RegionModifierObject->Initialize();
+}
+
+//----------------------------------------------------------------------------
+bool vtkSlicerTerminologyEntry::IsValid()
+{
+  if ( this->CategoryObject == nullptr || this->CategoryObject->GetCodeMeaning() == nullptr
+    || this->CategoryObject->GetCodingSchemeDesignator() == nullptr || this->CategoryObject->GetCodeValue() == nullptr )
+  {
+    return false;
+  }
+  if ( this->TypeObject == nullptr || this->TypeObject->GetCodeMeaning() == nullptr
+    || this->TypeObject->GetCodingSchemeDesignator() == nullptr || this->TypeObject->GetCodeValue() == nullptr )
+  {
+    return false;
+  }
+  return true;
+}
+
+//----------------------------------------------------------------------------
+bool vtkSlicerTerminologyEntry::IsEmpty()
+{
+  if (this->TerminologyContextName && strlen(this->TerminologyContextName) > 0)
+  {
+    return false;
+  }
+  if (!this->CategoryObject->IsEmpty())
+  {
+    return false;
+  }
+  if (!this->TypeObject->IsEmpty())
+  {
+    return false;
+  }
+  if (!this->TypeModifierObject->IsEmpty())
+  {
+    return false;
+  }
+  if (this->RegionContextName && strlen(this->RegionContextName) > 0)
+  {
+    return false;
+  }
+  if (!this->RegionObject->IsEmpty())
+  {
+    return false;
+  }
+  if (!this->RegionModifierObject->IsEmpty())
+  {
+    return false;
+  }
+  return true;
 }
 
 //----------------------------------------------------------------------------
@@ -83,7 +139,7 @@ void vtkSlicerTerminologyEntry::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "CategoryObject: ";
   if (this->CategoryObject)
   {
-    this->CategoryObject->PrintSelf(os, indent.GetNextIndent());
+    this->CategoryObject->PrintSelf(os << "\n", indent.GetNextIndent());
   }
   else
   {
@@ -92,7 +148,7 @@ void vtkSlicerTerminologyEntry::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "TypeObject: ";
   if (this->TypeObject)
   {
-    this->TypeObject->PrintSelf(os, indent.GetNextIndent());
+    this->TypeObject->PrintSelf(os << "\n", indent.GetNextIndent());
   }
   else
   {
@@ -101,27 +157,27 @@ void vtkSlicerTerminologyEntry::PrintSelf(ostream& os, vtkIndent indent)
   os << indent << "TypeModifierObject: ";
   if (this->TypeModifierObject)
   {
-    this->TypeModifierObject->PrintSelf(os, indent.GetNextIndent());
+    this->TypeModifierObject->PrintSelf(os << "\n", indent.GetNextIndent());
   }
   else
   {
     os << indent.GetNextIndent() << "NULL\n";
   }
 
-  os << indent << "AnatomicContextName:   " << (this->AnatomicContextName?this->AnatomicContextName:"NULL") << "\n";
-  os << indent << "AnatomicRegionObject: ";
-  if (this->AnatomicRegionObject)
+  os << indent << "RegionContextName:   " << (this->RegionContextName?this->RegionContextName:"NULL") << "\n";
+  os << indent << "RegionObject: ";
+  if (this->RegionObject)
   {
-    this->AnatomicRegionObject->PrintSelf(os, indent.GetNextIndent());
+    this->RegionObject->PrintSelf(os, indent.GetNextIndent());
   }
   else
   {
     os << indent.GetNextIndent() << "NULL\n";
   }
-  os << indent << "AnatomicRegionModifierObject: ";
-  if (this->AnatomicRegionModifierObject)
+  os << indent << "RegionModifierObject: ";
+  if (this->RegionModifierObject)
   {
-    this->AnatomicRegionModifierObject->PrintSelf(os, indent.GetNextIndent());
+    this->RegionModifierObject->PrintSelf(os, indent.GetNextIndent());
   }
   else
   {
@@ -138,12 +194,12 @@ void vtkSlicerTerminologyEntry::Copy(vtkSlicerTerminologyEntry* aEntry)
   }
 
   if (!aEntry->GetCategoryObject() || !aEntry->GetTypeObject() || !aEntry->GetTypeModifierObject()
-    || !aEntry->GetAnatomicRegionObject() || !aEntry->GetAnatomicRegionModifierObject() )
+    || !aEntry->GetRegionObject() || !aEntry->GetRegionModifierObject() )
   {
     vtkErrorMacro("Copy: Invalid terminology entry given");
     // Invalidate whole terminology entry
     this->SetTerminologyContextName(nullptr);
-    this->SetAnatomicContextName(nullptr);
+    this->SetRegionContextName(nullptr);
     return;
   }
 
@@ -153,8 +209,8 @@ void vtkSlicerTerminologyEntry::Copy(vtkSlicerTerminologyEntry* aEntry)
   this->TypeObject->Copy(aEntry->GetTypeObject());
   this->TypeModifierObject->Copy(aEntry->GetTypeModifierObject());
 
-  this->SetAnatomicContextName(aEntry->GetAnatomicContextName());
+  this->SetRegionContextName(aEntry->GetRegionContextName());
 
-  this->AnatomicRegionObject->Copy(aEntry->GetAnatomicRegionObject());
-  this->AnatomicRegionModifierObject->Copy(aEntry->GetAnatomicRegionModifierObject());
+  this->RegionObject->Copy(aEntry->GetRegionObject());
+  this->RegionModifierObject->Copy(aEntry->GetRegionModifierObject());
 }

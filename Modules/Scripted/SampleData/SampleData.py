@@ -269,6 +269,27 @@ class SampleDataWidget(ScriptedLoadableModuleWidget):
         if self.developerMode is False:
             self.setCategoryVisible(self.logic.developmentCategoryName, False)
 
+        customFrame = ctk.ctkCollapsibleGroupBox()
+        self.categoryLayout.addWidget(customFrame)
+        customFrame.title = _("Load data from URL")
+        customFrameLayout = qt.QHBoxLayout()
+        customFrame.setLayout(customFrameLayout)
+        self.customSampleLabel = qt.QLabel(_("URL:"))
+        customFrameLayout.addWidget(self.customSampleLabel)
+        self.customSampleName = qt.QLineEdit()
+        customFrameLayout.addWidget(self.customSampleName)
+        self.customDownloadButton = qt.QPushButton(_("Load"))
+        self.customDownloadButton.toolTip = _("Download the dataset from the given URL and import it into the scene")
+        self.customDownloadButton.default = True
+        customFrameLayout.addWidget(self.customDownloadButton)
+        self.showCustomDataFolderButton = qt.QPushButton(_("Show folder"))
+        self.showCustomDataFolderButton.toolTip = _("Show folder where custom data sets are downloaded ({path}).").format(path=slicer.app.cachePath)
+        customFrameLayout.addWidget(self.showCustomDataFolderButton)
+        customFrame.collapsed = True
+        self.customSampleName.connect("returnPressed()", self.onCustomDataDownload)
+        self.customDownloadButton.connect("clicked()", self.onCustomDataDownload)
+        self.showCustomDataFolderButton.connect("clicked()", self.onShowCustomDataFolder)
+
         self.log = qt.QTextEdit()
         self.log.readOnly = True
         self.layout.addWidget(self.log)
@@ -278,6 +299,12 @@ class SampleDataWidget(ScriptedLoadableModuleWidget):
 
     def cleanup(self):
         SampleDataWidget.setCategoriesFromSampleDataSources(self.categoryLayout, {}, self.logic)
+
+    def onCustomDataDownload(self):
+        self.logic.downloadFromURL(self.customSampleName.text)
+
+    def onShowCustomDataFolder(self):
+        qt.QDesktopServices.openUrl(qt.QUrl("file:///" + slicer.app.cachePath, qt.QUrl.TolerantMode))
 
     @staticmethod
     def removeCategories(categoryLayout):
@@ -676,6 +703,20 @@ class SampleDataLogic:
         for uri, fileName, nodeName, checksum, loadFile, loadFileType in zip(
             source.uris, source.fileNames, source.nodeNames, source.checksums, source.loadFiles, source.loadFileTypes):
 
+            if nodeName is None or fileName is None:
+                import urllib
+                import uuid
+                if fileName is not None:
+                    basename, ext = os.path.splitext(os.path.basename(fileName))
+                else:
+                    p = urllib.parse.urlparse(uri)
+                    basename, ext = os.path.splitext(os.path.basename(p.path))
+                if nodeName is None:
+                    nodeName = basename
+                if fileName is None:
+                    # Generate a unique filename to avoid overwriting existing file with the same name
+                    fileName = f"{nodeName}-{uuid.uuid4().hex}{ext}"
+
             current_source = SampleDataSource(
                 uris=uri,
                 fileNames=fileName,
@@ -939,29 +980,33 @@ class SampleDataLogic:
         return filePath
 
     def loadScene(self, uri, fileProperties={}):
-        self.logMessage("<b>" + _("Requesting load {uri}").format(uri=uri) + "</b>")
-        fileProperties["fileName"] = uri
-        success = slicer.app.coreIOManager().loadNodes("SceneFile", fileProperties)
-        if not success:
-            self.logMessage("\t" + _("Load failed!"), logging.ERROR)
-            return False
-        self.logMessage("<b>" + _("Load finished") + "</b><p></p>")
-        return True
+        """Returns True is scene loading was successful, False if failed."""
+        loadedNode = self.loadNode(uri, None, "SceneFile", fileProperties)
+        success = loadedNode is not None
+        return success
 
     def loadNode(self, uri, name, fileType=None, fileProperties={}):
+        """Returns the first loaded node (or the scene if the reader did not provide a specific node) on success.
+        Returns None if failed.
+        """
         self.logMessage("<b>" + _("Requesting load {name} from {uri} ...").format(name=name, uri=uri) + "</b>")
 
         fileProperties["fileName"] = uri
-        fileProperties["name"] = name
+        if name:
+            fileProperties["name"] = name
         if not fileType:
             fileType = slicer.app.coreIOManager().fileType(fileProperties["fileName"])
         firstLoadedNode = None
         loadedNodes = vtk.vtkCollection()
         success = slicer.app.coreIOManager().loadNodes(fileType, fileProperties, loadedNodes)
-
-        if not success or loadedNodes.GetNumberOfItems() < 1:
-            self.logMessage("\t" + _("Load failed!"), logging.ERROR)
-            return None
+        if not success:
+            if loadedNodes.GetNumberOfItems() < 1:
+                self.logMessage("\t" + _("Load failed!"), logging.ERROR)
+                return None
+            else:
+                # Loading did not fail, because some nodes were loaded, proceed with a warning
+                self.logMessage(_("Error was reported while loading {count} nodes from {path}").format(
+                                count=loadedNodes.GetNumberOfItems(), path=uri), logging.WARNING)
 
         self.logMessage("<b>" + _("Load finished") + "</b><p></p>")
 
@@ -976,7 +1021,13 @@ class SampleDataLogic:
             slicer.mrmlScene.RemoveNode(storageNode)
             loadedNode.SetAndObserveStorageNodeID(None)
 
-        return loadedNodes.GetItemAsObject(0)
+        firstLoadedNode = loadedNodes.GetItemAsObject(0)
+        if firstLoadedNode:
+            return firstLoadedNode
+        else:
+            # If a reader does not report loading of any specific node (it may happen for example with a scene reader)
+            # then return the scene to distinguish from a load error.
+            return slicer.mrmlScene
 
 
 class SampleDataTest(ScriptedLoadableModuleTest):
@@ -1033,7 +1084,7 @@ class SampleDataTest(ScriptedLoadableModuleTest):
         sceneMTime = slicer.mrmlScene.GetMTime()
         filePaths = logic.downloadFromSource(SampleDataSource(
             uris=TESTING_DATA_URL + "SHA256/cc211f0dfd9a05ca3841ce1141b292898b2dd2d3f08286affadf823a7e58df93",
-            fileNames="MR-head.nrrd"))
+            fileNames="MR-head.nrrd", loadFiles=False))
         self.assertEqual(len(filePaths), 1)
         self.assertTrue(os.path.exists(filePaths[0]))
         self.assertTrue(os.path.isfile(filePaths[0]))
@@ -1043,7 +1094,8 @@ class SampleDataTest(ScriptedLoadableModuleTest):
         filePaths = logic.downloadFromSource(SampleDataSource(
             uris=[TESTING_DATA_URL + "SHA256/cc211f0dfd9a05ca3841ce1141b292898b2dd2d3f08286affadf823a7e58df93",
                   TESTING_DATA_URL + "SHA256/4507b664690840abb6cb9af2d919377ffc4ef75b167cb6fd0f747befdb12e38e"],
-            fileNames=["MR-head.nrrd", "CT-chest.nrrd"]))
+            fileNames=["MR-head.nrrd", "CT-chest.nrrd"],
+            loadFiles=[False, False]))
         self.assertEqual(len(filePaths), 2)
         self.assertTrue(os.path.exists(filePaths[0]))
         self.assertTrue(os.path.isfile(filePaths[0]))
@@ -1056,7 +1108,8 @@ class SampleDataTest(ScriptedLoadableModuleTest):
         sceneMTime = slicer.mrmlScene.GetMTime()
         filePaths = logic.downloadFromSource(SampleDataSource(
             uris=TESTING_DATA_URL + "SHA256/b902f635ef2059cd3b4ba854c000b388e4a9e817a651f28be05c22511a317ec7",
-            fileNames="TinyPatient_Seg.zip"))
+            fileNames="TinyPatient_Seg.zip",
+            loadFileTypes="ZipFile"))
         self.assertEqual(len(filePaths), 1)
         self.assertTrue(os.path.exists(filePaths[0]))
         self.assertTrue(os.path.isdir(filePaths[0]))
@@ -1065,12 +1118,11 @@ class SampleDataTest(ScriptedLoadableModuleTest):
     def test_downloadFromSource_loadMRBFile(self):
         logic = SampleDataLogic()
         sceneMTime = slicer.mrmlScene.GetMTime()
-        filePaths = logic.downloadFromSource(SampleDataSource(
+        nodes = logic.downloadFromSource(SampleDataSource(
             uris=TESTING_DATA_URL + "SHA256/5a1c78c3347f77970b1a29e718bfa10e5376214692d55a7320af94b9d8d592b8",
             loadFiles=True, fileNames="slicer4minute.mrb"))
-        self.assertEqual(len(filePaths), 1)
-        self.assertTrue(os.path.exists(filePaths[0]))
-        self.assertTrue(os.path.isfile(filePaths[0]))
+        self.assertEqual(len(nodes), 1)
+        self.assertIsInstance(nodes[0], slicer.vtkMRMLCameraNode)
         self.assertTrue(sceneMTime < slicer.mrmlScene.GetMTime())
 
     def test_downloadFromSource_loadMRMLFile(self):
@@ -1084,11 +1136,10 @@ class SampleDataTest(ScriptedLoadableModuleTest):
       """).strip())
         tempFile.close()
         sceneMTime = slicer.mrmlScene.GetMTime()
-        filePaths = logic.downloadFromSource(SampleDataSource(
+        nodes = logic.downloadFromSource(SampleDataSource(
             uris=self.path2uri(tempFile.fileName()), loadFiles=True, fileNames="scene.mrml"))
-        self.assertEqual(len(filePaths), 1)
-        self.assertTrue(os.path.exists(filePaths[0]))
-        self.assertTrue(os.path.isfile(filePaths[0]))
+        self.assertEqual(len(nodes), 1)
+        self.assertIsInstance(nodes[0], slicer.vtkMRMLScene)
         self.assertTrue(sceneMTime < slicer.mrmlScene.GetMTime())
 
     def test_downloadFromSource_downloadMRBFile(self):
@@ -1096,7 +1147,8 @@ class SampleDataTest(ScriptedLoadableModuleTest):
         sceneMTime = slicer.mrmlScene.GetMTime()
         filePaths = logic.downloadFromSource(SampleDataSource(
             uris=TESTING_DATA_URL + "SHA256/5a1c78c3347f77970b1a29e718bfa10e5376214692d55a7320af94b9d8d592b8",
-            fileNames="slicer4minute.mrb"))
+            fileNames="slicer4minute.mrb",
+            loadFileTypes="SceneFile"))
         self.assertEqual(len(filePaths), 1)
         self.assertTrue(os.path.exists(filePaths[0]))
         self.assertTrue(os.path.isfile(filePaths[0]))
@@ -1114,7 +1166,7 @@ class SampleDataTest(ScriptedLoadableModuleTest):
         tempFile.close()
         sceneMTime = slicer.mrmlScene.GetMTime()
         filePaths = logic.downloadFromSource(SampleDataSource(
-            uris=self.path2uri(tempFile.fileName()), fileNames="scene.mrml"))
+            uris=self.path2uri(tempFile.fileName()), fileNames="scene.mrml", loadFileTypes="SceneFile"))
         self.assertEqual(len(filePaths), 1)
         self.assertTrue(os.path.exists(filePaths[0]))
         self.assertTrue(os.path.isfile(filePaths[0]))
@@ -1128,15 +1180,25 @@ class SampleDataTest(ScriptedLoadableModuleTest):
         self.assertEqual(len(nodes), 1)
         self.assertEqual(nodes[0], slicer.mrmlScene.GetFirstNodeByName("MRHead"))
 
+    def test_downloadFromSource_loadNodeWithoutNodeName(self):
+        logic = SampleDataLogic()
+        nodes = logic.downloadFromSource(SampleDataSource(
+            uris=TESTING_DATA_URL + "MD5/39b01631b7b38232a220007230624c8e",
+            fileNames="MR-head.nrrd"))
+        self.assertEqual(len(nodes), 1)
+        self.assertEqual(nodes[0], slicer.mrmlScene.GetFirstNodeByName("MR-head"))
+
     def test_downloadFromSource_loadNodeFromMultipleFiles(self):
         logic = SampleDataLogic()
         nodes = logic.downloadFromSource(SampleDataSource(
-            uris=[TESTING_DATA_URL + "SHA256/d785837276758ddd9d21d76a3694e7fd866505a05bc305793517774c117cb38d",
-                  TESTING_DATA_URL + "SHA256/67564aa42c7e2eec5c3fd68afb5a910e9eab837b61da780933716a3b922e50fe"],
-            fileNames=["DTIVolume.raw.gz", "DTIVolume.nhdr"],
-            nodeNames=[None, "DTIVolume"]))
-        self.assertEqual(len(nodes), 1)
-        self.assertEqual(nodes[0], slicer.mrmlScene.GetFirstNodeByName("DTIVolume"))
+            uris=[TESTING_DATA_URL + "SHA256/bbfd8dd1914e9d7af09df3f6e254374064f6993a37552cc587581623a520a11f",
+                  TESTING_DATA_URL + "SHA256/33825585b01a506e532934581a7bddd9de9e7b898e24adfed5454ffc6dfe48ea"],
+            fileNames=["MRHeadResampled.raw.gz", "MRHeadResampled.nhdr"],
+            nodeNames=[None, "MRHeadResampled"],
+            loadFiles=[False, True]))
+        self.assertEqual(len(nodes), 2)
+        self.assertEqual(os.path.basename(nodes[0]), "MRHeadResampled.raw.gz")
+        self.assertEqual(nodes[1], slicer.mrmlScene.GetFirstNodeByName("MRHeadResampled"))
 
     def test_downloadFromSource_loadNodesWithLoadFileFalse(self):
         logic = SampleDataLogic()
@@ -1161,6 +1223,16 @@ class SampleDataTest(ScriptedLoadableModuleTest):
         self.assertEqual(len(nodes), 2)
         self.assertEqual(nodes[0], slicer.mrmlScene.GetFirstNodeByName("MRHead"))
         self.assertEqual(nodes[1], slicer.mrmlScene.GetFirstNodeByName("CTChest"))
+
+    def test_downloadFromSource_loadNodesWithoutNodeNames(self):
+        logic = SampleDataLogic()
+        nodes = logic.downloadFromSource(SampleDataSource(
+            uris=[TESTING_DATA_URL + "SHA256/cc211f0dfd9a05ca3841ce1141b292898b2dd2d3f08286affadf823a7e58df93",
+                  TESTING_DATA_URL + "SHA256/4507b664690840abb6cb9af2d919377ffc4ef75b167cb6fd0f747befdb12e38e"],
+            fileNames=["MR-head.nrrd", "CT-chest.nrrd"]))
+        self.assertEqual(len(nodes), 2)
+        self.assertEqual(nodes[0], slicer.mrmlScene.GetFirstNodeByName("MR-head"))
+        self.assertEqual(nodes[1], slicer.mrmlScene.GetFirstNodeByName("CT-chest"))
 
     def test_sampleDataSourcesByCategory(self):
         self.assertTrue(len(SampleDataLogic.sampleDataSourcesByCategory()) > 0)

@@ -268,6 +268,44 @@ class UtilTestTest(ScriptedLoadableModuleTest):
         self.assertEqual(tableNode2.GetNumberOfColumns(), 2)
         self.assertEqual(tableNode2.GetNumberOfRows(), 11)
 
+        self.delayDisplay("Test structured array update")
+        tableNode3 = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode")
+        data_type = np.dtype([("mountain_rank", np.uint16), ("height", np.int32)])
+        structured_array = np.array([
+            (1, 8859), # Mount Everest
+            (2, 8611), # K2
+            (3, 8586), # Kangchenjunga
+        ], dtype=data_type)
+        slicer.util.updateTableFromArray(tableNode3, structured_array)
+        self.assertEqual(tableNode3.GetNumberOfColumns(), 2)
+        self.assertEqual(tableNode3.GetNumberOfRows(), 3)
+        self.assertEqual(tableNode3.GetColumnName(0), "mountain_rank")
+        self.assertEqual(tableNode3.GetColumnType("mountain_rank"), vtk.VTK_UNSIGNED_SHORT)
+        self.assertEqual(tableNode3.GetColumnName(1), "height")
+        self.assertEqual(tableNode3.GetColumnType("height"), vtk.VTK_INT)
+
+        self.delayDisplay("Test boolean array update")
+        tableNode4 = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode")
+        narray = np.array([True, False, True])
+        slicer.util.updateTableFromArray(tableNode4, narray)
+        self.assertEqual(tableNode4.GetNumberOfColumns(), 1)
+        self.assertEqual(tableNode4.GetNumberOfRows(), 3)
+        self.assertEqual(tableNode4.GetColumnType(tableNode4.GetColumnName(0)), vtk.VTK_BIT)
+        self.assertEqual(tableNode4.GetTable().GetValue(0, 0), 1)
+        self.assertEqual(tableNode4.GetTable().GetValue(1, 0), 0)
+        self.assertEqual(tableNode4.GetTable().GetValue(2, 0), 1)
+
+        self.delayDisplay("Test boolean array update with setBoolAsUchar=True")
+        tableNode5 = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode")
+        narray = np.array([True, False, True])
+        slicer.util.updateTableFromArray(tableNode5, narray, setBoolAsUchar=True)
+        self.assertEqual(tableNode5.GetNumberOfColumns(), 1)
+        self.assertEqual(tableNode5.GetNumberOfRows(), 3)
+        self.assertEqual(tableNode5.GetColumnType(tableNode4.GetColumnName(0)), vtk.VTK_UNSIGNED_CHAR)
+        self.assertEqual(tableNode5.GetTable().GetValue(0, 0), 1)
+        self.assertEqual(tableNode5.GetTable().GetValue(1, 0), 0)
+        self.assertEqual(tableNode5.GetTable().GetValue(2, 0), 1)
+
         self.delayDisplay("Testing slicer.util.test_updateTableFromArray passed")
 
     def test_arrayFromModelPoints(self):

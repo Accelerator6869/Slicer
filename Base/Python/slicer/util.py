@@ -2497,17 +2497,75 @@ def arrayFromTableColumnModified(tableNode, columnName):
     tableNode.GetTable().Modified()
 
 
-def updateTableFromArray(tableNode, narrays, columnNames=None):
-    """Set values in a table node from a numpy array.
+def _vtkArrayFromNumpyArray(narray, deep=False, arrayType=None):
+    """
+    Convert a NumPy array into a VTK-compatible array, with special handling for ``VTK_BIT`` arrays.
 
-    :param columnNames: may contain a string or list of strings that will be used as column name(s).
-    :raises ValueError: in case of failure
+    When ``arrayType`` is set to ``vtk.VTK_BIT``, this function works around an existing issue in
+    the built-in VTK helper ``vtk.util.numpy_support.numpy_to_vtk.numpy_to_vtk`` by manually packing
+    the bits. See https://gitlab.kitware.com/vtk/vtk/-/issues/19610
+    """
+    import numpy as np
+    import vtk.util.numpy_support
 
-    Values are copied, therefore if the numpy array  is modified after calling this method,
-    values in the table node will not change.
-    All previous content of the table is deleted.
+    if arrayType == vtk.VTK_BIT:
+        # Workaround issue with built-in VTK function numpy_to_vtk.
+        # See https://gitlab.kitware.com/vtk/vtk/-/issues/19610
+        packedBits = np.packbits(narray)
+        resultArray = vtk.util.numpy_support.create_vtk_array(arrayType)
+        resultArray.SetNumberOfComponents(1)
+        shape = narray.shape
+        resultArray.SetNumberOfTuples(shape[0])
+        resultArray.SetVoidArray(packedBits, shape[0], 1)
+        # Since packedBits is a standalone object with no references from the caller.
+        # As such, it will drop out of this scope and cause memory issues if we
+        # do not deep copy its data.
+        copy = resultArray.NewInstance()
+        copy.DeepCopy(resultArray)
+        resultArray = copy
+        return resultArray
 
-    Example::
+    return vtk.util.numpy_support.numpy_to_vtk(narray, deep=deep, array_type=arrayType)
+
+
+def updateTableFromArray(tableNode, narrays, columnNames=None, setBoolAsUchar=False):
+    """Set values in a table node from a NumPy array or an array-like object (list/tuple of NumPy arrays).
+
+    This function can handle:
+
+      - **Structured (record) array** with named fields. Each field becomes a separate column.
+        If ``columnNames`` is not provided, the field names in the dtype are used.
+      - **1D NumPy array**, which is added as a single column.
+      - **2D NumPy array**, where each column in the array is added as a separate column in the
+        table node (note that the array is transposed).
+      - **List/tuple** of 1D NumPy arrays, which are each added as separate columns.
+
+    :param tableNode: The table node to be updated. If ``None``, a new ``vtkMRMLTableNode`` is
+      created and added to the scene.
+    :type tableNode: vtkMRMLTableNode or None
+    :param narrays: NumPy array or array-like object (structured array, 1D/2D array, or list/tuple of 1D arrays).
+    :type narrays: np.ndarray, tuple, or list
+    :param columnNames: Optional string or list of strings specifying names for the columns. If fewer
+      names are provided than columns, only the specified columns are named;
+      otherwise columns get default names. If ``None`` is passed, no column names are set.
+    :type columnNames: str, list of str, or None
+    :param setBoolAsUchar: If ``True``, boolean arrays are converted to ``uint8`` for plotting compatibility.
+      This leverages the :func:`_vtkArrayFromNumpyArray` function's handling of ``VTK_BIT`` arrays.
+      Default is ``False``.
+    :type setBoolAsUchar: bool
+    :return: Updated ``vtkMRMLTableNode``.
+    :raises ValueError: If the input ``narrays`` is not a recognized format.
+
+    This function automatically detects the data type of each input array using
+    ``vtk.util.numpy_support.get_vtk_array_type`` and maps it to the corresponding VTK array type. As a
+    result, a broader range of numeric and complex data (e.g., int, float, and complex) is supported
+    without requiring manual conversions. All existing columns in the target table node are removed
+    before adding new columns.
+
+    .. warning:: Data in the table node is stored by value (deep copy). Modifying the NumPy array after calling
+        this function does not update the table node's data.
+
+    .. code-block:: python
 
       import numpy as np
       histogram = np.histogram(arrayFromVolume(getNode('MRHead')))
@@ -2520,22 +2578,52 @@ def updateTableFromArray(tableNode, narrays, columnNames=None):
 
     if tableNode is None:
         tableNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLTableNode")
-    if isinstance(narrays, np.ndarray) and len(narrays.shape) == 1:
+
+    if isinstance(narrays, np.ndarray) and narrays.dtype.names:
+        # Structured array with named fields
+        fieldNames = narrays.dtype.names
+        if columnNames is None:
+            columnNames = list(fieldNames)
+        ncolumns = [narrays[fieldName] for fieldName in fieldNames]
+    elif isinstance(narrays, np.ndarray) and len(narrays.shape) == 1:
+        # Single 1D array
         ncolumns = [narrays]
     elif isinstance(narrays, np.ndarray) and len(narrays.shape) == 2:
+        # 2D array -> transpose so columns become separate arrays
         ncolumns = narrays.T
     elif isinstance(narrays, tuple) or isinstance(narrays, list):
+        # List or tuple of 1D arrays
         ncolumns = narrays
     else:
-        raise ValueError("Expected narrays is a numpy ndarray, or tuple or list of numpy ndarrays, got %s instead." % (str(type(narrays))))
+        # Unrecognized format
+        msg = (
+            "Expected a structured NumPy array (with named fields), "
+            "a 1D/2D NumPy array, or a list/tuple of 1D arrays; "
+            "got {object_type} instead.".format(object_type=type(narrays))
+        )
+        raise ValueError(msg)
+
     tableNode.RemoveAllColumns()
     # Convert single string to a single-element string list
     if columnNames is None:
         columnNames = []
     if isinstance(columnNames, str):
         columnNames = [columnNames]
+
+    # For each extracted column, convert to a VTK array and add to the table.
     for columnIndex, ncolumn in enumerate(ncolumns):
-        vcolumn = vtk.util.numpy_support.numpy_to_vtk(num_array=ncolumn.ravel(), deep=True, array_type=vtk.VTK_FLOAT)
+        vtype = None
+        if ncolumn.dtype == np.bool_:
+            if setBoolAsUchar:
+                # Convert boolean arrays to uint to ensure compatibility with VTK plotting infrastructure:
+                # vtkContext2D does not support vtkBitArray, and plotting calls that rely on
+                # vtkArrayDownCast<vtkFloatArray>() would fail with a bit array.
+                ncolumn = ncolumn.astype("uint8")
+            else:
+                vtype = vtk.VTK_BIT
+        if vtype is None:
+            vtype = vtk.util.numpy_support.get_vtk_array_type(ncolumn.dtype)
+        vcolumn = _vtkArrayFromNumpyArray(ncolumn.ravel(), deep=True, arrayType=vtype)
         if (columnNames is not None) and (columnIndex < len(columnNames)):
             vcolumn.SetName(columnNames[columnIndex])
         tableNode.AddColumn(vcolumn)
@@ -3639,7 +3727,7 @@ class chdir:
         os.chdir(self._old_cwd.pop())
 
 
-def plot(narray, xColumnIndex=-1, columnNames=None, title=None, show=True, nodes=None):
+def plot(narray, xColumnIndex=-1, columnNames=None, title=None, show=True, nodes=None, plotBoolAsUchar=False):
     """Create a plot from a numpy array that contains two or more columns.
 
     :param narray: input numpy array containing data series in columns.
@@ -3652,6 +3740,9 @@ def plot(narray, xColumnIndex=-1, columnNames=None, title=None, show=True, nodes
       Specified in a dictionary, with keys: 'chart', 'table', 'series'.
       Series contains a list of plot series nodes (one for each table column).
       The parameter is used both as an input and output.
+    :param plotBoolAsUchar: If ``True``, any boolean columns in the input array are automatically
+      converted to unsigned integer arrays. This avoids issues with plotting bit arrays (``vtkBitArray``),
+      which are not fully supported by VTK plotting. Defaults to ``False``.
     :return: plot chart node. Plot chart node provides access to chart properties and plot series nodes.
 
     Example 1: simple plot
@@ -3712,7 +3803,7 @@ def plot(narray, xColumnIndex=-1, columnNames=None, title=None, show=True, nodes
 
     if title is not None:
         tableNode.SetName(title + " table")
-    updateTableFromArray(tableNode, narray)
+    updateTableFromArray(tableNode, narray, setBoolAsUchar=plotBoolAsUchar)
     # Update column names
     numberOfColumns = tableNode.GetTable().GetNumberOfColumns()
     yColumnIndex = 0

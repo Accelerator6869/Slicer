@@ -13,34 +13,52 @@ Version:   $Revision: 1.18 $
 =========================================================================auto=*/
 
 #include "vtkMRMLScene.h"
-#include "vtkMRMLParser.h"
 
+// MRML includes
 #include "vtkArchive.h"
 #include "vtkCacheManager.h"
 #include "vtkDataIOManager.h"
-#include "vtkTagTable.h"
-
 #include "vtkMRMLBSplineTransformNode.h"
 #include "vtkMRMLCameraNode.h"
 #include "vtkMRMLClipModelsNode.h"
 #include "vtkMRMLClipNode.h"
+#include "vtkMRMLColorTableNode.h"
 #include "vtkMRMLColorTableStorageNode.h"
 #include "vtkMRMLCrosshairNode.h"
+#include "vtkMRMLDiffusionTensorDisplayPropertiesNode.h"
 #include "vtkMRMLDiffusionWeightedVolumeDisplayNode.h"
 #include "vtkMRMLDiffusionWeightedVolumeNode.h"
+#include "vtkMRMLDisplayableHierarchyNode.h"
 #include "vtkMRMLFolderDisplayNode.h"
 #include "vtkMRMLGridTransformNode.h"
+#include "vtkMRMLHierarchyNode.h"
 #include "vtkMRMLHierarchyStorageNode.h"
 #include "vtkMRMLInteractionNode.h"
 #include "vtkMRMLLabelMapVolumeDisplayNode.h"
 #include "vtkMRMLLabelMapVolumeNode.h"
 #include "vtkMRMLLayoutNode.h"
-#include "vtkMRMLLinearTransformSequenceStorageNode.h"
 #include "vtkMRMLLinearTransformNode.h"
+#include "vtkMRMLLinearTransformSequenceStorageNode.h"
+#include "vtkMRMLMarkupsAngleNode.h"
+#include "vtkMRMLMarkupsClosedCurveNode.h"
+#include "vtkMRMLMarkupsCurveNode.h"
+#include "vtkMRMLMarkupsDisplayNode.h"
+#include "vtkMRMLMarkupsFiducialDisplayNode.h"
+#include "vtkMRMLMarkupsFiducialNode.h"
+#include "vtkMRMLMarkupsFiducialStorageNode.h"
+#include "vtkMRMLMarkupsLineNode.h"
+#include "vtkMRMLMarkupsNode.h"
+#include "vtkMRMLMarkupsPlaneDisplayNode.h"
+#include "vtkMRMLMarkupsPlaneNode.h"
+#include "vtkMRMLMarkupsROIDisplayNode.h"
+#include "vtkMRMLMarkupsROINode.h"
 #include "vtkMRMLMessageCollection.h"
+#include "vtkMRMLModelDisplayNode.h"
 #include "vtkMRMLModelHierarchyNode.h"
 #include "vtkMRMLModelNode.h"
 #include "vtkMRMLModelStorageNode.h"
+#include "vtkMRMLNode.h"
+#include "vtkMRMLParser.h"
 #include "vtkMRMLPlotChartNode.h"
 #include "vtkMRMLPlotSeriesNode.h"
 #include "vtkMRMLPlotViewNode.h"
@@ -48,6 +66,8 @@ Version:   $Revision: 1.18 $
 #include "vtkMRMLProceduralColorStorageNode.h"
 #include "vtkMRMLROIListNode.h"
 #include "vtkMRMLROINode.h"
+#include "vtkMRMLScalarVolumeDisplayNode.h"
+#include "vtkMRMLScalarVolumeNode.h"
 #include "vtkMRMLSceneViewNode.h"
 #include "vtkMRMLScriptedModuleNode.h"
 #include "vtkMRMLSegmentationDisplayNode.h"
@@ -73,6 +93,7 @@ Version:   $Revision: 1.18 $
 #include "vtkMRMLViewNode.h"
 #include "vtkMRMLVolumeArchetypeStorageNode.h"
 #include "vtkMRMLVolumeSequenceStorageNode.h"
+#include "vtkTagTable.h"
 #include "vtkURIHandler.h"
 
 #ifdef MRML_USE_vtkTeem
@@ -93,9 +114,9 @@ Version:   $Revision: 1.18 $
 #include <vtkSmartPointer.h>
 
 // VTKSYS includes
+#include <vtksys/Glob.hxx>
 #include <vtksys/RegularExpression.hxx>
 #include <vtksys/SystemTools.hxx>
-#include <vtksys/Glob.hxx>
 
 // STD includes
 #include <algorithm>
@@ -166,74 +187,87 @@ vtkMRMLScene::vtkMRMLScene()
   //   creates nodes).
   //
 
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLScalarVolumeNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLModelNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLLinearTransformNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLModelStorageNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLModelDisplayNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLClipModelsNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLClipNode >::New());
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLFolderDisplayNode >::New());
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLROINode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLROIListNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLSliceCompositeNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLScriptedModuleNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLSegmentationDisplayNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLSegmentationNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLSegmentationStorageNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLSelectionNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLSliceDisplayNode >::New());
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLSliceNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLVolumeArchetypeStorageNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLScalarVolumeDisplayNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLLabelMapVolumeDisplayNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLLabelMapVolumeNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLColorNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLDiffusionWeightedVolumeNode >::New() );
-#ifdef MRML_USE_vtkTeem
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLDiffusionTensorVolumeNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLDiffusionTensorVolumeDisplayNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLDiffusionTensorVolumeSliceDisplayNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLNRRDStorageNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLVectorVolumeNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLStreamingVolumeNode >::New() );
-#endif
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLVectorVolumeDisplayNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLDiffusionWeightedVolumeDisplayNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLDiffusionTensorDisplayPropertiesNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLCameraNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLViewNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLLayoutNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLHierarchyNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLHierarchyStorageNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLDisplayableHierarchyNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLModelHierarchyNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLSnapshotClipNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLColorTableNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLColorTableStorageNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLProceduralColorNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLProceduralColorStorageNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLTransformDisplayNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLTransformStorageNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLTransformNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLGridTransformNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLBSplineTransformNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLCrosshairNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLInteractionNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLTableNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLTableStorageNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLTableViewNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLTextNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLTextStorageNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLPlotSeriesNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLPlotChartNode >::New() );
-  this->RegisterNodeClass( vtkSmartPointer< vtkMRMLPlotViewNode >::New() );
-  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLSubjectHierarchyNode>::New()); // Increments next subject hierarchy item ID
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLBSplineTransformNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLCameraNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLClipModelsNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLClipNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLColorTableNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLColorTableStorageNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLCrosshairNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLDiffusionTensorDisplayPropertiesNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLDiffusionWeightedVolumeDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLDiffusionWeightedVolumeNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLDisplayableHierarchyNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLFolderDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLGridTransformNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLHierarchyNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLHierarchyStorageNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLInteractionNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLLabelMapVolumeDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLLabelMapVolumeNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLLayoutNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLLinearTransformNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLLinearTransformSequenceStorageNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLMarkupsAngleNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLMarkupsClosedCurveNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLMarkupsCurveNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLMarkupsDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLMarkupsFiducialDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLMarkupsFiducialNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLMarkupsFiducialStorageNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLMarkupsLineNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLMarkupsPlaneDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLMarkupsPlaneNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLMarkupsROIDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLMarkupsROINode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLModelDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLModelHierarchyNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLModelNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLModelStorageNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLPlotChartNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLPlotSeriesNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLPlotViewNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLProceduralColorNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLProceduralColorStorageNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLROIListNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLROINode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLScalarVolumeDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLScalarVolumeNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLScriptedModuleNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLSegmentationDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLSegmentationNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLSegmentationStorageNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLSelectionNode>::New());
   this->RegisterNodeClass(vtkSmartPointer<vtkMRMLSequenceNode>::New());
   this->RegisterNodeClass(vtkSmartPointer<vtkMRMLSequenceStorageNode>::New());
-  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLLinearTransformSequenceStorageNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLSliceCompositeNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLSliceDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLSliceNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLSnapshotClipNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLSubjectHierarchyNode>::New()); // Increments next subject hierarchy item ID
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLTableNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLTableStorageNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLTableViewNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLTextNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLTextStorageNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLTransformDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLTransformNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLTransformStorageNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLVectorVolumeDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLViewNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLVolumeArchetypeStorageNode>::New());
   this->RegisterNodeClass(vtkSmartPointer<vtkMRMLVolumeSequenceStorageNode>::New());
 
+#ifdef MRML_USE_vtkTeem
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLDiffusionTensorVolumeDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLDiffusionTensorVolumeNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLDiffusionTensorVolumeSliceDisplayNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLNRRDStorageNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLStreamingVolumeNode>::New());
+  this->RegisterNodeClass(vtkSmartPointer<vtkMRMLVectorVolumeNode>::New());
+#endif
+
+  this->RegisterAbstractNodeClass("vtkMRMLMarkupsNode", "Markup");
   this->RegisterAbstractNodeClass("vtkMRMLVolumeNode", "Volume");
 }
 
@@ -3867,11 +3901,12 @@ std::string vtkMRMLScene::GetTemporaryBundleDirectory()
 {
   std::stringstream ss;
   ss << vtksys::SystemTools::GetCurrentDateTime("_tmp%Y%m%d");
-  const char validCharacters[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-  int numberOfCharacters = sizeof(validCharacters) - 1;
+  const char validCharacters[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  int numberOfCharacters = sizeof(validCharacters) - 1; // -1 because the null terminator is included in sizeof()
+  std::uniform_int_distribution<int> distribution(0, numberOfCharacters - 1); // -1 because the upper bound is inclusive
   for (int i = 0; i < 5; i++)
   {
-    ss << validCharacters[rand() % numberOfCharacters];
+    ss << validCharacters[distribution(this->RandomGenerator)];
   }
   return ss.str();
 }
@@ -3912,12 +3947,14 @@ bool vtkMRMLScene::WriteToMRB(const char* filename, vtkImageData* thumbnail/*=nu
 
   // make a subdirectory with the name the user has chosen
   std::string bundleDir = tempDir + "/" + mrbBaseName;
+  // trim whitespace from the right because a folder name cannot end with space (there can be a space before the ".")
+  bundleDir.erase(bundleDir.find_last_not_of(" ") + 1);
   if (vtksys::SystemTools::FileExists(bundleDir, false))
   {
     if (!vtksys::SystemTools::RemoveADirectory(bundleDir))
     {
       vtkErrorToMessageCollectionMacro(userMessages, "vtkMRMLScene::WriteToMRB",
-        "Failed to write scene: could not clean temporary directory " << bundleDir);
+        "Failed to write scene: could not clean temporary directory '" << bundleDir << "'");
       return false;
     }
   }
@@ -3925,7 +3962,7 @@ bool vtkMRMLScene::WriteToMRB(const char* filename, vtkImageData* thumbnail/*=nu
   if (!vtksys::SystemTools::MakeDirectory(bundleDir))
   {
     vtkErrorToMessageCollectionMacro(userMessages, "vtkMRMLScene::WriteToMRB",
-      "Failed to save " << filename << ": Could not create temporary directory " << bundleDir);
+      "Failed to save " << filename << ": Could not create temporary directory '" << bundleDir << "'");
     return false;
   }
 
@@ -3937,7 +3974,7 @@ bool vtkMRMLScene::WriteToMRB(const char* filename, vtkImageData* thumbnail/*=nu
   if (!retval)
   {
     vtkErrorToMessageCollectionMacro(userMessages, "vtkMRMLScene::WriteToMRB",
-      "Failed to save " << filename << ": Failed to save scene to data bundle directory");
+      "Failed to save '" << filename << "': Failed to save scene to data bundle directory '" << bundleDir << "'");
     return false;
   }
 
@@ -3945,7 +3982,7 @@ bool vtkMRMLScene::WriteToMRB(const char* filename, vtkImageData* thumbnail/*=nu
   if (!vtkArchive::Zip(mrbFilePath.c_str(), bundleDir.c_str()))
   {
     vtkErrorToMessageCollectionMacro(userMessages, "vtkMRMLScene::WriteToMRB",
-      "Failed to save " << filename << ": Could not compress bundle");
+      "Failed to save '" << filename << "': Could not compress bundle in directory '" << bundleDir << "'");
     return false;
   }
 
@@ -3955,7 +3992,7 @@ bool vtkMRMLScene::WriteToMRB(const char* filename, vtkImageData* thumbnail/*=nu
   if (!vtksys::SystemTools::RemoveADirectory(tempDir))
   {
     vtkWarningToMessageCollectionMacro(userMessages, "vtkMRMLScene::WriteToMRB",
-      "Error while saving " << filename << ": Could not clean temporary directory " << bundleDir);
+      "Error while saving " << filename << ": Could not clean temporary directory '" << bundleDir << "'");
   }
 
   vtkDebugMacro("Saved " << mrbFilePath);
@@ -3995,7 +4032,7 @@ bool vtkMRMLScene::ReadFromMRB(const char* fullName, bool clear/*=false*/, vtkMR
     if (!vtksys::SystemTools::RemoveADirectory(unpackDir.c_str()))
     {
       vtkErrorToMessageCollectionMacro(userMessages, "vtkMRMLScene::ReadFromMRB",
-        "Cannot remove directory '" << unpackDir << "'."
+        "Could not remove temporary directory '" << unpackDir << "'."
         << " Check that remote cache directory that is specified in application setting is writable.");
       return false;
     }
@@ -4004,7 +4041,7 @@ bool vtkMRMLScene::ReadFromMRB(const char* fullName, bool clear/*=false*/, vtkMR
   if (!vtksys::SystemTools::MakeDirectory(unpackDir.c_str()))
   {
     vtkErrorToMessageCollectionMacro(userMessages, "vtkMRMLScene::ReadFromMRB",
-      "Cannot create directory '" << unpackDir << "'."
+      "Could not create temporary directory '" << unpackDir << "'."
       << +" Check that remote cache directory that is specified in application setting is writable.");
     return false;
   }
@@ -4022,9 +4059,8 @@ bool vtkMRMLScene::ReadFromMRB(const char* fullName, bool clear/*=false*/, vtkMR
   }
   if (!vtksys::SystemTools::RemoveADirectory(unpackDir))
   {
-    vtkErrorToMessageCollectionMacro(userMessages, "vtkMRMLScene::ReadFromMRB",
-      "vtkMRMLScene::ReadFromMRB failed: cannot remove directory '" << unpackDir << "'");
-    return false;
+    vtkWarningToMessageCollectionMacro(userMessages, "vtkMRMLScene::ReadFromMRB",
+      "vtkMRMLScene::ReadFromMRB failed to remove temporary directory '" << unpackDir << "' after reading the scene from it.");
   }
 
   vtkDebugMacro("Loaded bundle from " << unpackDir);
@@ -4190,7 +4226,7 @@ bool vtkMRMLScene::SaveSceneToSlicerDataBundleDirectory(const char* sdbDir,
     if (!vtksys::SystemTools::RemoveADirectory(rootDir.c_str()))
     {
       vtkErrorToMessageCollectionMacro(userMessages, "vtkMRMLScene::SaveSceneToSlicerDataBundleDirectory",
-        "Save scene to data bundle directory failed: Error removing SDB scene directory " << rootDir.c_str() << ", cannot make a fresh archive.");
+        "Save scene to data bundle directory failed: Error removing SDB scene directory '" << rootDir.c_str() << "', cannot make a fresh archive.");
       return false;
     }
   }
@@ -4559,32 +4595,30 @@ bool vtkMRMLScene::SaveStorableNodeToSlicerDataBundleDirectory(vtkMRMLStorableNo
   // (if more files are needed then storage node must generate appropriate additional file names based on the primary file name).
   storageNode->ResetFileNameList();
 
-  // Update primary file name (set name from node name if empty, encode special characters, use default file extension)
+  // Filenames are generated from node names. Very long node names could generate very long file names that are not supported by all file systems
+  // (on Windows, maximum path length is 260). To prevent saving errors on Windows (and prevent loading of scenes on Windows that were saved on other
+  // operating systems), we limit the file name length.
+  const int maxFileNameLength = 50;
+
+  // Update file name: use current base name by default (set name from node name if empty), encode special characters, use default file extension
+  std::string fileBaseName;
   if (fileName.empty())
   {
     // Default storage node usually has empty file name (if Save dialog is not opened yet)
-    // file name is encoded to handle : or / characters in the node names
-    std::string fileBaseName = this->PercentEncode(std::string(storableNode->GetName()));
-    fileBaseName = storageNode->ClampFileName(fileBaseName);
-    std::string extension = storageNode->GetDefaultWriteFileExtension();
-    std::string storageFileName = fileBaseName + std::string(".") + extension;
-    vtkDebugMacro("new file name = " << storageFileName.c_str());
-    storageNode->SetFileName(storageFileName.c_str());
+    fileBaseName = storableNode->GetName() ? storableNode->GetName() : "unnamed";
   }
   else
   {
-    // new file name is encoded to handle : or / characters in the node names
-    std::string storageFileName = this->PercentEncode(vtksys::SystemTools::GetFilenameName(fileName));
-    std::string defaultWriteExtension = std::string(".") + vtksys::SystemTools::LowerCase(storageNode->GetDefaultWriteFileExtension());
-    std::string currentExtension = storageNode->GetSupportedFileExtension(storageFileName.c_str());
-    if (defaultWriteExtension != currentExtension)
-    {
-      // for saving to MRB all nodes will be written in their default format
-      storageFileName = storageNode->GetFileNameWithoutExtension(storageFileName.c_str()) + defaultWriteExtension;
-    }
-    vtkDebugMacro("updated file name = " << storageFileName.c_str());
-    storageNode->SetFileName(storageFileName.c_str());
+    // Get the filename base from the current filename.
+    // For saving to MRB, all nodes will be written in their default format, so we ignore the current file extension.
+    fileBaseName = storageNode->GetFileNameWithoutExtension(vtksys::SystemTools::GetFilenameName(fileName).c_str());
   }
+  std::string defaultWriteExtension = std::string(".") + vtksys::SystemTools::LowerCase(storageNode->GetDefaultWriteFileExtension());
+  // file name is encoded to handle : or / characters in the node names
+  std::string storageFileName = this->PercentEncode(fileBaseName) + defaultWriteExtension;
+  storageFileName = vtkMRMLStorageNode::ClampFileName(storageFileName, defaultWriteExtension.size(), maxFileNameLength);
+  vtkDebugMacro("updated file name = " << storageFileName.c_str());
+  storageNode->SetFileName(storageFileName.c_str());
 
   storageNode->SetDataDirectory(dataDir.c_str());
   vtkDebugMacro("Set data directory to " << dataDir.c_str() << ". Storable node " << storableNode->GetID()

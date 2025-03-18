@@ -93,6 +93,10 @@
 #include <qMRMLThreeDWidget.h>
 #include <qMRMLThreeDView.h>
 
+// Terminologies includes
+#include <vtkSlicerTerminologyEntry.h>
+#include <vtkSlicerTerminologiesModuleLogic.h>
+
 // Qt includes
 #include <QAbstractItemView>
 #include <QAction>
@@ -358,6 +362,7 @@ qMRMLSegmentEditorWidgetPrivate::~qMRMLSegmentEditorWidgetPrivate()
 
   foreach(qSlicerSegmentEditorAbstractEffect* effect, this->RegisteredEffects)
   {
+    effect->cleanup();
     delete effect;
   }
   this->RegisteredEffects.clear();
@@ -426,6 +431,9 @@ void qMRMLSegmentEditorWidgetPrivate::init()
   QAction* exportToFileAction = new QAction(qMRMLSegmentEditorWidget::tr("Export to files..."), segmentationsButtonMenu);
   segmentationsButtonMenu->addAction(exportToFileAction);
   QObject::connect(exportToFileAction, SIGNAL(triggered()), q, SLOT(onExportToFilesActionClicked()));
+  QAction* exportToColorNodeAction = new QAction(qMRMLSegmentEditorWidget::tr("Export to color table"), segmentationsButtonMenu);
+  segmentationsButtonMenu->addAction(exportToColorNodeAction);
+  QObject::connect(exportToColorNodeAction, SIGNAL(triggered()), q, SLOT(onExportToColorTableActionClicked()));
 
   this->SwitchToSegmentationsButton->setMenu(segmentationsButtonMenu);
 
@@ -2152,10 +2160,21 @@ void qMRMLSegmentEditorWidget::onAddSegment()
   vtkSegment* addedSegment = segmentationNode->GetSegmentation()->GetSegment(addedSegmentID);
   if (addedSegment)
   {
-    QString defaultTerminologyEntryStr = this->defaultTerminologyEntry();
+    QString defaultTerminologyEntryStr;
+    // Default terminology in the segmentation node has the highest priority
+    vtkNew<vtkSlicerTerminologyEntry> entry;
+    if (vtkSlicerTerminologiesModuleLogic::GetDefaultTerminologyEntry(segmentationNode, entry) && !entry->IsEmpty())
+    {
+      defaultTerminologyEntryStr = QString::fromStdString(vtkSlicerTerminologiesModuleLogic::SerializeTerminologyEntry(entry));
+    }
+    if (defaultTerminologyEntryStr.isEmpty())
+    {
+      defaultTerminologyEntryStr = this->defaultTerminologyEntry();
+    }
+
     if (!defaultTerminologyEntryStr.isEmpty())
     {
-      addedSegment->SetTag(vtkSegment::GetTerminologyEntryTagName(), defaultTerminologyEntryStr.toUtf8().constData());
+      addedSegment->SetTerminology(defaultTerminologyEntryStr.toStdString());
     }
   }
 
@@ -2186,10 +2205,8 @@ void qMRMLSegmentEditorWidget::onAddSegment()
   {
     vtkSegment* secondLastSegment = segmentationNode->GetSegmentation()->GetNthSegment(
       segmentationNode->GetSegmentation()->GetNumberOfSegments() - 2 );
-    std::string repeatedTerminologyEntry("");
-    secondLastSegment->GetTag(secondLastSegment->GetTerminologyEntryTagName(), repeatedTerminologyEntry);
-    segmentationNode->GetSegmentation()->GetSegment(addedSegmentID)->SetTag(
-      secondLastSegment->GetTerminologyEntryTagName(), repeatedTerminologyEntry );
+    std::string repeatedTerminologyEntry = secondLastSegment->GetTerminology();
+    segmentationNode->GetSegmentation()->GetSegment(addedSegmentID)->SetTerminology(repeatedTerminologyEntry);
   }
 }
 
@@ -3520,6 +3537,34 @@ void qMRMLSegmentEditorWidget::onExportToFilesActionClicked()
 
   // Delete dialog when done
   exportDialog->deleteLater();
+}
+
+//-----------------------------------------------------------------------------
+void qMRMLSegmentEditorWidget::onExportToColorTableActionClicked()
+{
+  Q_D(qMRMLSegmentEditorWidget);
+
+  vtkMRMLSegmentationNode* segmentationNode = d->ParameterSetNode ? d->ParameterSetNode->GetSegmentationNode() : nullptr;
+  if (!segmentationNode)
+  {
+    return;
+  }
+
+  vtkMRMLColorTableNode* newColorTable = vtkSlicerSegmentationsModuleLogic::AddColorTableNodeForSegmentation(segmentationNode);
+  if (newColorTable == nullptr)
+  {
+    qCritical() << Q_FUNC_INFO << "Failed to create color table node for segmentation " << segmentationNode->GetName();
+    return;
+  }
+
+  // Export all segments to the new color table
+  std::vector<std::string> segmentIDs;
+  if (!vtkSlicerSegmentationsModuleLogic::ExportSegmentsToColorTableNode(segmentationNode, segmentIDs, newColorTable))
+  {
+    qCritical() << Q_FUNC_INFO << "Failed to export color and terminology information from segmentation " << segmentationNode->GetName()
+      << " to color table " << newColorTable->GetName();
+    return;
+  }
 }
 
 //-----------------------------------------------------------------------------

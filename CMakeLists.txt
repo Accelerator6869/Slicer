@@ -81,7 +81,7 @@ if(NOT DEFINED Slicer_VERSION_MAJOR)
   set(Slicer_VERSION_MAJOR "5")
 endif()
 if(NOT DEFINED Slicer_VERSION_MINOR)
-  set(Slicer_VERSION_MINOR "7")
+  set(Slicer_VERSION_MINOR "9")
 endif()
 if(NOT DEFINED Slicer_VERSION_PATCH)
   set(Slicer_VERSION_PATCH "0")
@@ -364,6 +364,8 @@ set(_commit_count_offsets
   "200"
   # Allocate revisions for patch releases between v5.6.0 and v5.7.0
   "200"
+  # Allocate revisions for patch releases between v5.8.0 and v5.9.0
+  "200"
   )
 list(JOIN _commit_count_offsets "+" _commit_count_offsets_expr)
 math(EXPR _commit_count_offset "${_commit_count_offsets_expr}")
@@ -427,6 +429,8 @@ if(NOT "${Slicer_VTK_VERSION_MAJOR}" MATCHES "^(9)$")
   message(FATAL_ERROR "error: Slicer_VTK_VERSION_MAJOR must be 9.")
 endif()
 mark_as_superbuild(Slicer_VTK_VERSION_MAJOR)
+
+set(Slicer_VTK_MINIMUM_SUPPORTED_VERSION "9.2")
 
 #
 # SimpleITK has large internal libraries, which take an extremely long
@@ -571,10 +575,6 @@ endif()
 #-----------------------------------------------------------------------------
 # Slicer VTK Options
 #-----------------------------------------------------------------------------
-set(_backend "OpenGL2")
-set(Slicer_VTK_RENDERING_BACKEND "${_backend}" CACHE STRING "Rendering backend." FORCE)
-mark_as_superbuild(Slicer_VTK_RENDERING_BACKEND)
-set(Slicer_VTK_RENDERING_USE_${Slicer_VTK_RENDERING_BACKEND}_BACKEND 1)
 
 # Slicer build is only tested with Sequential and TBB. OpenMP might work.
 set(Slicer_DEFAULT_VTK_SMP_IMPLEMENTATION_TYPE "TBB")
@@ -591,9 +591,9 @@ else()
 endif()
 
 message(STATUS "Configuring VTK")
-message(STATUS "  Slicer_VTK_RENDERING_BACKEND is ${Slicer_VTK_RENDERING_BACKEND}")
 message(STATUS "  Slicer_VTK_SMP_IMPLEMENTATION_TYPE is ${Slicer_VTK_SMP_IMPLEMENTATION_TYPE}")
 message(STATUS "  Slicer_VTK_VERSION_MAJOR is ${Slicer_VTK_VERSION_MAJOR}")
+message(STATUS "  Slicer_VTK_MINIMUM_SUPPORTED_VERSION is ${Slicer_VTK_MINIMUM_SUPPORTED_VERSION}")
 
 #-----------------------------------------------------------------------------
 # Slicer_VTK_COMPONENTS
@@ -614,9 +614,9 @@ set(Slicer_VTK_COMPONENTS
   ImagingStatistics
   ImagingStencil
   InteractionImage
-  RenderingContext${Slicer_VTK_RENDERING_BACKEND}
+  RenderingContextOpenGL2
   RenderingQt
-  RenderingVolume${Slicer_VTK_RENDERING_BACKEND}
+  RenderingVolumeOpenGL2
   TestingRendering
   ViewsQt
   zlib
@@ -714,8 +714,15 @@ set(Slicer_HAVE_QT5 1)
 #
 # See https://issues.slicer.org/view.php?id=3574
 #
+if(NOT DEFINED Slicer_USE_SYSTEM_QT)
   foreach(_path IN ITEMS
       "/usr/lib/"
+      "/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}/"
+      # The following line is a consequence of multiarch usr merge (https://wiki.debian.org/UsrMerge)
+      # /usr/lib will bye symlinked to /lib. In this case Qt5_DIR could be reported as
+      # /lib/${CMAKE_LIBRARY_ARCHITECTURE}/
+      "/lib/"
+      "/lib/${CMAKE_LIBRARY_ARCHITECTURE}/"
       "/usr/lib32/"
       "/usr/lib64/"
       "/usr/local/lib/"
@@ -728,14 +735,12 @@ set(Slicer_HAVE_QT5 1)
     if("${Qt5_DIR}" MATCHES "^${_path}")
       set(Slicer_USE_SYSTEM_QT ON)
       message(STATUS "")
-      message(STATUS "Forcing Slicer_USE_SYSTEM_QT to ON (Qt5_DIR [${Qt5_DIR}] associated with a system location: ${_path})")
+      message(STATUS "Initializing Slicer_USE_SYSTEM_QT to ON (Qt5_DIR [${Qt5_DIR}] associated with a system location: ${_path})")
       message(STATUS "")
       break()
     endif()
   endforeach()
-
-# Always use QVTKOpenGLWidget (instead of QVTKWidget)
-set(Slicer_VTK_USE_QVTKOPENGLWIDGET 1)
+endif()
 
 #-----------------------------------------------------------------------------
 # Testing
@@ -888,7 +893,7 @@ endif()
 #-----------------------------------------------------------------------------
 find_package(VTK REQUIRED)
 set(VTK_LIBRARIES "")
-find_package(VTK ${Slicer_VTK_VERSION_MAJOR} COMPONENTS ${Slicer_VTK_COMPONENTS} REQUIRED)
+find_package(VTK ${Slicer_VTK_MINIMUM_SUPPORTED_VERSION} COMPONENTS ${Slicer_VTK_COMPONENTS} REQUIRED)
 set(VTK_GUI_SUPPORT_QT_TARGET_NAME "VTK::GUISupportQt")
 
 if(NOT TARGET ${VTK_GUI_SUPPORT_QT_TARGET_NAME})
@@ -896,7 +901,6 @@ if(NOT TARGET ${VTK_GUI_SUPPORT_QT_TARGET_NAME})
                     "to recompile it with VTK_USE_GUISUPPORT ON, VTK_Group_Qt ON, "
                     "Note that Qt >= ${Slicer_REQUIRED_QT_VERSION} is *required*")
 endif()
-set(VTK_RENDERING_BACKEND "${Slicer_VTK_RENDERING_BACKEND}")
 
 #-----------------------------------------------------------------------------
 # CTK
